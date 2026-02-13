@@ -18,6 +18,7 @@ app.use(cors({
 app.use(express.json());
 
 // ==================== DATABASE CONNECTION (Serverless Optimized) ====================
+// ==================== DATABASE CONNECTION (Serverless Optimized - FIXED) ====================
 let cached = global.mongoose;
 
 if (!cached) {
@@ -32,21 +33,44 @@ async function connectToDatabase() {
 
   if (!cached.promise) {
     const opts = {
-      bufferCommands: false,
-      bufferMaxEntries: 0,
+      bufferCommands: false, // Disable mongoose buffering
+      bufferMaxEntries: 0, // REMOVE THIS LINE - it's deprecated
       useNewUrlParser: true,
       useUnifiedTopology: true,
       serverSelectionTimeoutMS: 5000,
       socketTimeoutMS: 45000,
-      family: 4 // Force IPv4
+      family: 4,
+      maxPoolSize: 10, // Add connection pooling
+      minPoolSize: 0,
+      maxIdleTimeMS: 10000,
+      waitQueueTimeoutMS: 5000
     };
 
     console.log('Connecting to MongoDB...');
-    cached.promise = mongoose.connect(process.env.MONGODB_URI, opts).then((mongoose) => {
-      console.log('✅ Connected to MongoDB');
+    console.log('Connection string:', process.env.MONGODB_URI?.replace(/\/\/[^:]+:[^@]+@/, '//***:***@')); // Log safely
+    
+    cached.promise = mongoose.connect(process.env.MONGODB_URI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000,
+      family: 4,
+      maxPoolSize: 10,
+      minPoolSize: 0,
+      maxIdleTimeMS: 10000,
+      waitQueueTimeoutMS: 5000
+    }).then((mongoose) => {
+      console.log('✅ Connected to MongoDB successfully');
+      console.log('Database host:', mongoose.connection.host);
+      console.log('Database name:', mongoose.connection.name);
       return mongoose;
     }).catch(err => {
-      console.error('❌ MongoDB connection error:', err);
+      console.error('❌ MongoDB connection error details:', {
+        name: err.name,
+        message: err.message,
+        code: err.code,
+        codeName: err.codeName
+      });
       cached.promise = null;
       throw err;
     });
