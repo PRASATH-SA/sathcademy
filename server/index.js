@@ -168,7 +168,9 @@ app.post('/api/auth/register', [
     res.status(500).json({ message: 'Server error' });
   }
 });
-
+app.get('/api/health',(req,res)=>{
+  res.send("Fine👍")
+});
 // Login
 app.post('/api/auth/login', [
   body('email').isEmail().normalizeEmail(),
