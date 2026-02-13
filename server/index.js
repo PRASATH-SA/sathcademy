@@ -5,43 +5,64 @@ import dotenv from 'dotenv';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { body, validationResult } from 'express-validator';
-import helmet from 'helmet';
-import rateLimit from 'express-rate-limit';
 
-// ==================== CONFIGURATION ====================
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
-const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this';
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/video-platform';
 
 // ==================== MIDDLEWARE ====================
-app.use(helmet()); // Security headers
 app.use(cors({
-  origin: ['http://localhost:3000','https://sathcademy.prasath.in'],
+  origin: '*',
   credentials: true
 }));
 app.use(express.json());
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 // limit each IP to 100 requests per windowMs
-});
-app.use('/api/', limiter);
+// ==================== DATABASE CONNECTION (Serverless Optimized) ====================
+let cached = global.mongoose;
 
-// ==================== DATABASE CONNECTION ====================
-mongoose.connect(MONGODB_URI)
-  .then(() => console.log('✅ Connected to MongoDB'))
-  .catch(err => {
-    console.error('❌ MongoDB connection error:', err);
-    process.exit(1);
-  });
+if (!cached) {
+  cached = global.mongoose = { conn: null, promise: null };
+}
+
+async function connectToDatabase() {
+  if (cached.conn) {
+    console.log('Using cached MongoDB connection');
+    return cached.conn;
+  }
+
+  if (!cached.promise) {
+    const opts = {
+      bufferCommands: false,
+      bufferMaxEntries: 0,
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000,
+      family: 4 // Force IPv4
+    };
+
+    console.log('Connecting to MongoDB...');
+    cached.promise = mongoose.connect(process.env.MONGODB_URI, opts).then((mongoose) => {
+      console.log('✅ Connected to MongoDB');
+      return mongoose;
+    }).catch(err => {
+      console.error('❌ MongoDB connection error:', err);
+      cached.promise = null;
+      throw err;
+    });
+  }
+  
+  try {
+    cached.conn = await cached.promise;
+  } catch (e) {
+    cached.promise = null;
+    throw e;
+  }
+
+  return cached.conn;
+}
 
 // ==================== DATABASE MODELS ====================
-
-// User Schema
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
   email: { type: String, required: true, unique: true, lowercase: true, trim: true },
@@ -53,7 +74,6 @@ const userSchema = new mongoose.Schema({
   lastLogin: { type: Date }
 }, { timestamps: true });
 
-// Hash password before saving
 userSchema.pre('save', async function(next) {
   if (!this.isModified('password')) return next();
   this.password = await bcrypt.hash(this.password, 10);
@@ -64,9 +84,8 @@ userSchema.methods.comparePassword = async function(candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
-const User = mongoose.model('User', userSchema);
+const User = mongoose.models.User || mongoose.model('User', userSchema);
 
-// Class Schema
 const classSchema = new mongoose.Schema({
   title: { type: String, required: true, trim: true },
   description: { type: String, required: true },
@@ -85,29 +104,33 @@ const classSchema = new mongoose.Schema({
   category: { type: String, required: true }
 }, { timestamps: true });
 
-const Class = mongoose.model('Class', classSchema);
+const Class = mongoose.models.Class || mongoose.model('Class', classSchema);
 
 // ==================== MIDDLEWARE FUNCTIONS ====================
+const authenticateToken = async (req, res, next) => {
+  try {
+    await connectToDatabase();
+    
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
 
-// Authentication middleware
-const authenticateToken = (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-
-  if (!token) {
-    return res.status(401).json({ message: 'Access token required' });
-  }
-
-  jwt.verify(token, JWT_SECRET, (err, user) => {
-    if (err) {
-      return res.status(403).json({ message: 'Invalid or expired token' });
+    if (!token) {
+      return res.status(401).json({ message: 'Access token required' });
     }
-    req.user = user;
-    next();
-  });
+
+    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+      if (err) {
+        return res.status(403).json({ message: 'Invalid or expired token' });
+      }
+      req.user = user;
+      next();
+    });
+  } catch (error) {
+    console.error('Auth middleware error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
 };
 
-// Admin check middleware
 const isAdmin = (req, res, next) => {
   if (req.user.role !== 'admin') {
     return res.status(403).json({ message: 'Admin access required' });
@@ -116,14 +139,14 @@ const isAdmin = (req, res, next) => {
 };
 
 // ==================== AUTH ROUTES ====================
-
-// Register
 app.post('/api/auth/register', [
   body('email').isEmail().normalizeEmail(),
   body('password').isLength({ min: 6 }),
   body('name').notEmpty().trim()
 ], async (req, res) => {
   try {
+    await connectToDatabase();
+    
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
@@ -131,52 +154,37 @@ app.post('/api/auth/register', [
 
     const { email, password, name } = req.body;
 
-    // Check if user exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: 'User already exists' });
     }
 
-    // Create new user
-    const user = new User({
-      email,
-      password,
-      name,
-      role: 'student'
-    });
-
+    const user = new User({ email, password, name, role: 'student' });
     await user.save();
 
-    // Generate token
     const token = jwt.sign(
       { userId: user._id, email: user.email, role: user.role },
-      JWT_SECRET,
+      process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
 
     res.status(201).json({
       token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role
-      }
+      user: { id: user._id, name: user.name, email: user.email, role: user.role }
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Register error:', error);
+    res.status(500).json({ message: 'Server error: ' + error.message });
   }
 });
-app.get('/api/health',(req,res)=>{
-  res.send("Fine👍")
-});
-// Login
+
 app.post('/api/auth/login', [
   body('email').isEmail().normalizeEmail(),
   body('password').notEmpty()
 ], async (req, res) => {
   try {
+    await connectToDatabase();
+    
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
@@ -184,63 +192,68 @@ app.post('/api/auth/login', [
 
     const { email, password } = req.body;
 
-    // Find user
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    // Check password
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    // Update last login
     user.lastLogin = new Date();
     await user.save();
 
-    // Generate token
     const token = jwt.sign(
       { userId: user._id, email: user.email, role: user.role },
-      JWT_SECRET,
+      process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
 
     res.json({
       token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role
-      }
+      user: { id: user._id, name: user.name, email: user.email, role: user.role }
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Login error:', error);
+    res.status(500).json({ message: 'Server error: ' + error.message });
   }
 });
 
-// Get current user
 app.get('/api/auth/me', authenticateToken, async (req, res) => {
   try {
+    await connectToDatabase();
     const user = await User.findById(req.user.userId).select('-password');
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
     res.json(user);
   } catch (error) {
-    console.error(error);
+    console.error('Get me error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
 
-// ==================== CLASS ROUTES ====================
+// ==================== HEALTH CHECK ENDPOINT ====================
+app.get('/api/health', async (req, res) => {
+  try {
+    await connectToDatabase();
+    const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
+    res.json({ 
+      status: 'ok', 
+      database: dbStatus,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+});
 
-// Get all classes (with filters)
+// ==================== CLASS ROUTES ====================
 app.get('/api/classes', authenticateToken, async (req, res) => {
   try {
+    await connectToDatabase();
     const { type, category, search } = req.query;
     let query = { isActive: true };
 
@@ -256,24 +269,25 @@ app.get('/api/classes', authenticateToken, async (req, res) => {
 
     const classes = await Class.find(query)
       .select('-enrolledStudents')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .limit(parseInt(req.query.limit) || 50);
 
     res.json(classes);
   } catch (error) {
-    console.error(error);
+    console.error('Get classes error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
 
-// Get class stats for dashboard
 app.get('/api/classes/stats', authenticateToken, async (req, res) => {
   try {
+    await connectToDatabase();
     const totalClasses = await Class.countDocuments({ isActive: true });
     const liveClasses = await Class.countDocuments({ type: 'live', isActive: true });
     const recordedClasses = await Class.countDocuments({ type: 'recorded', isActive: true });
     
     const user = await User.findById(req.user.userId);
-    const enrolledClasses = user.enrolledClasses.length;
+    const enrolledClasses = user?.enrolledClasses?.length || 0;
 
     const totalViews = await Class.aggregate([
       { $group: { _id: null, total: { $sum: '$views' } } }
@@ -287,33 +301,32 @@ app.get('/api/classes/stats', authenticateToken, async (req, res) => {
       totalViews: totalViews[0]?.total || 0
     });
   } catch (error) {
-    console.error(error);
+    console.error('Get stats error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
 
-// Get single class
 app.get('/api/classes/:id', authenticateToken, async (req, res) => {
   try {
+    await connectToDatabase();
     const classItem = await Class.findById(req.params.id);
     if (!classItem) {
       return res.status(404).json({ message: 'Class not found' });
     }
 
-    // Increment views
     classItem.views += 1;
     await classItem.save();
 
     res.json(classItem);
   } catch (error) {
-    console.error(error);
+    console.error('Get class error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
 
-// Enroll in class
 app.post('/api/classes/:id/enroll', authenticateToken, async (req, res) => {
   try {
+    await connectToDatabase();
     const classItem = await Class.findById(req.params.id);
     if (!classItem) {
       return res.status(404).json({ message: 'Class not found' });
@@ -325,33 +338,34 @@ app.post('/api/classes/:id/enroll', authenticateToken, async (req, res) => {
       classItem.enrolledStudents.push(req.user.userId);
       await classItem.save();
       
-      user.enrolledClasses.push(req.params.id);
-      await user.save();
+      if (!user.enrolledClasses.includes(req.params.id)) {
+        user.enrolledClasses.push(req.params.id);
+        await user.save();
+      }
     }
 
     res.json({ message: 'Enrolled successfully' });
   } catch (error) {
-    console.error(error);
+    console.error('Enroll error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
 
-// Get user's enrolled classes
 app.get('/api/user/classes', authenticateToken, async (req, res) => {
   try {
+    await connectToDatabase();
     const user = await User.findById(req.user.userId).populate('enrolledClasses');
-    res.json(user.enrolledClasses);
+    res.json(user?.enrolledClasses || []);
   } catch (error) {
-    console.error(error);
+    console.error('Get user classes error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
 
 // ==================== ADMIN ROUTES ====================
-
-// Admin dashboard stats
 app.get('/api/admin/dashboard', authenticateToken, isAdmin, async (req, res) => {
   try {
+    await connectToDatabase();
     const totalUsers = await User.countDocuments({ role: 'student' });
     const totalClasses = await Class.countDocuments();
     const liveClasses = await Class.countDocuments({ type: 'live', isActive: true });
@@ -386,38 +400,38 @@ app.get('/api/admin/dashboard', authenticateToken, isAdmin, async (req, res) => 
       categoryStats
     });
   } catch (error) {
-    console.error(error);
+    console.error('Admin dashboard error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
 
-// Get all classes (admin)
 app.get('/api/admin/classes', authenticateToken, isAdmin, async (req, res) => {
   try {
+    await connectToDatabase();
     const classes = await Class.find().sort({ createdAt: -1 });
     res.json(classes);
   } catch (error) {
-    console.error(error);
+    console.error('Admin get classes error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
 
-// Create class
 app.post('/api/admin/classes', authenticateToken, isAdmin, async (req, res) => {
   try {
+    await connectToDatabase();
     const classData = req.body;
     const newClass = new Class(classData);
     await newClass.save();
     res.status(201).json(newClass);
   } catch (error) {
-    console.error(error);
+    console.error('Admin create class error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
 
-// Update class
 app.put('/api/admin/classes/:id', authenticateToken, isAdmin, async (req, res) => {
   try {
+    await connectToDatabase();
     const classItem = await Class.findByIdAndUpdate(
       req.params.id,
       req.body,
@@ -428,41 +442,41 @@ app.put('/api/admin/classes/:id', authenticateToken, isAdmin, async (req, res) =
     }
     res.json(classItem);
   } catch (error) {
-    console.error(error);
+    console.error('Admin update class error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
 
-// Delete class
 app.delete('/api/admin/classes/:id', authenticateToken, isAdmin, async (req, res) => {
   try {
+    await connectToDatabase();
     const classItem = await Class.findByIdAndDelete(req.params.id);
     if (!classItem) {
       return res.status(404).json({ message: 'Class not found' });
     }
     res.json({ message: 'Class deleted successfully' });
   } catch (error) {
-    console.error(error);
+    console.error('Admin delete class error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
 
-// Get all users (admin)
 app.get('/api/admin/users', authenticateToken, isAdmin, async (req, res) => {
   try {
+    await connectToDatabase();
     const users = await User.find({ role: 'student' })
       .select('-password')
       .sort({ createdAt: -1 });
     res.json(users);
   } catch (error) {
-    console.error(error);
+    console.error('Admin get users error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
 
-// Update user (admin)
 app.put('/api/admin/users/:id', authenticateToken, isAdmin, async (req, res) => {
   try {
+    await connectToDatabase();
     const { name, email, role } = req.body;
     const user = await User.findByIdAndUpdate(
       req.params.id,
@@ -475,28 +489,28 @@ app.put('/api/admin/users/:id', authenticateToken, isAdmin, async (req, res) => 
     }
     res.json(user);
   } catch (error) {
-    console.error(error);
+    console.error('Admin update user error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
 
-// Delete user (admin)
 app.delete('/api/admin/users/:id', authenticateToken, isAdmin, async (req, res) => {
   try {
+    await connectToDatabase();
     const user = await User.findByIdAndDelete(req.params.id);
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
     res.json({ message: 'User deleted successfully' });
   } catch (error) {
-    console.error(error);
+    console.error('Admin delete user error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
 
-// Create admin user (first-time setup)
 app.post('/api/admin/setup', async (req, res) => {
   try {
+    await connectToDatabase();
     const adminExists = await User.findOne({ role: 'admin' });
     if (adminExists) {
       return res.status(400).json({ message: 'Admin already exists' });
@@ -504,26 +518,15 @@ app.post('/api/admin/setup', async (req, res) => {
 
     const { email, password, name } = req.body;
     
-    const admin = new User({
-      email,
-      password,
-      name,
-      role: 'admin'
-    });
-
+    const admin = new User({ email, password, name, role: 'admin' });
     await admin.save();
     
     res.status(201).json({ message: 'Admin created successfully' });
   } catch (error) {
-    console.error(error);
+    console.error('Admin setup error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
 
-// ==================== START SERVER ====================
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📝 API available at http://localhost:${PORT}/api`);
-});
-
+// ==================== EXPORT FOR VERCEL ====================
 export default app;
