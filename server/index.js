@@ -19,7 +19,7 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/video-
 // ==================== MIDDLEWARE ====================
 app.use(helmet()); // Security headers
 app.use(cors({
-  origin: ['http://localhost:3000', 'https://your-frontend.vercel.app'],
+  origin: ['http://localhost:3000','https://sathcademy.prasath.in'],
   credentials: true
 }));
 app.use(express.json());
