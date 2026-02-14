@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics - LearnStream Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chart.js for analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-100">
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-white z-50 hidden flex items-center justify-center">
+        <div class="text-center">
+            <div class="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+            <p class="mt-4 text-gray-600">Loading...</p>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed top-4 right-4 z-50 hidden">
+        <div class="bg-white rounded-lg shadow-lg border-l-4 border-green-500 px-6 py-4 min-w-[300px]">
+            <div class="flex items-center">
+                <i id="toastIcon" class="fas fa-check-circle text-green-500 text-xl mr-3"></i>
+                <p id="toastMessage" class="text-gray-700 flex-1"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Navigation -->
+    <nav class="bg-gray-900 text-white sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <i class="fas fa-graduation-cap text-blue-400 text-2xl mr-2"></i>
+                    <span class="font-bold text-xl">LearnStream Admin</span>
+                </div>
+                <div class="hidden md:flex items-center space-x-8">
+                    <a href="/admin/dashboard.html" class="text-gray-300 hover:text-white px-3 py-2">Dashboard</a>
+                    <a href="/admin/classes.html" class="text-gray-300 hover:text-white px-3 py-2">Classes</a>
+                    <a href="/admin/users.html" class="text-gray-300 hover:text-white px-3 py-2">Users</a>
+                    <a href="/admin/analytics.html" class="text-white bg-gray-800 px-3 py-2 rounded-md">Analytics</a>
+                    <div class="relative group">
+                        <button class="flex items-center space-x-2 text-gray-300">
+                            <span>Admin</span>
+                            <i class="fas fa-chevron-down text-xs"></i>
+                        </button>
+                        <div class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 hidden group-hover:block">
+                            <a href="/profile.html" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Profile</a>
+                            <a href="/" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">View Site</a>
+                            <button onclick="logout()" class="block w-full text-left px-4 py-2 text-red-600 hover:bg-gray-100">Logout</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Header -->
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-800">Analytics Dashboard</h1>
+            <p class="text-gray-600 mt-1">Track your platform's performance and growth</p>
+        </div>
+
+        <!-- Date Range Selector -->
+        <div class="bg-white rounded-lg shadow-md p-4 mb-8">
+            <div class="flex items-center space-x-4">
+                <label class="text-gray-700 font-medium">Date Range:</label>
+                <select id="dateRange" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                    <option value="7">Last 7 days</option>
+                    <option value="30" selected>Last 30 days</option>
+                    <option value="90">Last 90 days</option>
+                    <option value="365">Last year</option>
+                </select>
+                <button onclick="loadAnalytics()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
+                    Apply
+                </button>
+            </div>
+        </div>
+
+        <!-- Key Metrics -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8" id="keyMetrics">
+            <!-- Metrics will be loaded here -->
+        </div>
+
+        <!-- Charts Row 1 -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <!-- User Growth Chart -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-lg font-semibold text-gray-800 mb-4">User Growth</h2>
+                <canvas id="userGrowthChart" height="300"></canvas>
+            </div>
+
+            <!-- Class Views Chart -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-lg font-semibold text-gray-800 mb-4">Class Views</h2>
+                <canvas id="classViewsChart" height="300"></canvas>
+            </div>
+        </div>
+
+        <!-- Charts Row 2 -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <!-- Category Distribution -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-lg font-semibold text-gray-800 mb-4">Classes by Category</h2>
+                <canvas id="categoryChart" height="300"></canvas>
+            </div>
+
+            <!-- Top Performing Classes -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-lg font-semibold text-gray-800 mb-4">Top Performing Classes</h2>
+                <div class="overflow-y-auto max-h-[300px]">
+                    <table class="min-w-full">
+                        <thead>
+                            <tr class="border-b">
+                                <th class="text-left py-2">Class</th>
+                                <th class="text-left py-2">Views</th>
+                                <th class="text-left py-2">Students</th>
+                            </tr>
+                        </thead>
+                        <tbody id="topClassesTable">
+                            <!-- Data will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">Recent Activity</h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full">
+                    <thead>
+                        <tr class="border-b">
+                            <th class="text-left py-2">Time</th>
+                            <th class="text-left py-2">User</th>
+                            <th class="text-left py-2">Action</th>
+                            <th class="text-left py-2">Details</th>
+                        </tr>
+                    </thead>
+                    <tbody id="activityTable">
+                        <!-- Activity will be loaded here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/api.js"></script>
+    <script src="/js/auth.js"></script>
+    <script>
+        // Check admin authentication
+        const admin = checkAdmin();
+        if (!admin) window.location.href = '/login.html';
+
+        let charts = {};
+
+        // Load analytics data
+        document.addEventListener('DOMContentLoaded', () => {
+            loadAnalytics();
+        });
+
+        async function loadAnalytics() {
+            showLoading();
+            try {
+                const days = document.getElementById('dateRange').value;
+                
+                // Note: You'll need to add these analytics endpoints to your API
+                const metrics = await apiCall(`/admin/analytics/metrics?days=${days}`);
+                const userGrowth = await apiCall(`/admin/analytics/user-growth?days=${days}`);
+                const classViews = await apiCall(`/admin/analytics/class-views?days=${days}`);
+                const categories = await apiCall('/admin/analytics/categories');
+                const topClasses = await apiCall('/admin/analytics/top-classes');
+                const activity = await apiCall('/admin/analytics/recent-activity');
+                
+                displayMetrics(metrics);
+                updateUserGrowthChart(userGrowth);
+                updateClassViewsChart(classViews);
+                updateCategoryChart(categories);
+                displayTopClasses(topClasses);
+                displayActivity(activity);
+            } catch (error) {
+                console.error('Failed to load analytics:', error);
+                showToast('Failed to load analytics data', 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function displayMetrics(metrics) {
+            const metricsContainer = document.getElementById('keyMetrics');
+            const metricItems = [
+                { label: 'Total Users', value: metrics.totalUsers, change: metrics.userGrowth, icon: 'users', color: 'blue' },
+                { label: 'Total Classes', value: metrics.totalClasses, change: metrics.classGrowth, icon: 'book', color: 'green' },
+                { label: 'Total Views', value: metrics.totalViews, change: metrics.viewGrowth, icon: 'eye', color: 'purple' },
+                { label: 'Active Students', value: metrics.activeStudents, change: metrics.activeGrowth, icon: 'user-graduate', color: 'orange' }
+            ];
+
+            metricsContainer.innerHTML = metricItems.map(item => `
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="bg-${item.color}-100 p-3 rounded-full">
+                            <i class="fas fa-${item.icon} text-${item.color}-600 text-xl"></i>
+                        </div>
+                        <span class="text-2xl font-bold text-gray-800">${item.value}</span>
+                    </div>
+                    <p class="text-gray-600 font-medium">${item.label}</p>
+                    <p class="text-sm ${item.change >= 0 ? 'text-green-600' : 'text-red-600'} mt-1">
+                        <i class="fas fa-${item.change >= 0 ? 'arrow-up' : 'arrow-down'} mr-1"></i>
+                        ${Math.abs(item.change)}% from last period
+                    </p>
+                </div>
+            `).join('');
+        }
+
+        function updateUserGrowthChart(data) {
+            if (charts.userGrowth) charts.userGrowth.destroy();
+            
+            const ctx = document.getElementById('userGrowthChart').getContext('2d');
+            charts.userGrowth = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.labels,
+                    datasets: [{
+                        label: 'New Users',
+                        data: data.values,
+                        borderColor: 'rgb(59, 130, 246)',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        }
+
+        function updateClassViewsChart(data) {
+            if (charts.classViews) charts.classViews.destroy();
+            
+            const ctx = document.getElementById('classViewsChart').getContext('2d');
+            charts.classViews = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: data.labels,
+                    datasets: [{
+                        label: 'Views',
+                        data: data.values,
+                        backgroundColor: 'rgba(16, 185, 129, 0.8)',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        }
+
+        function updateCategoryChart(data) {
+            if (charts.category) charts.category.destroy();
+            
+            const ctx = document.getElementById('categoryChart').getContext('2d');
+            
+            // Generate colors
+            const colors = [
+                'rgba(59, 130, 246, 0.8)',
+                'rgba(16, 185, 129, 0.8)',
+                'rgba(245, 158, 11, 0.8)',
+                'rgba(139, 92, 246, 0.8)',
+                'rgba(236, 72, 153, 0.8)',
+                'rgba(239, 68, 68, 0.8)'
+            ];
+            
+            charts.category = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: data.map(d => d._id),
+                    datasets: [{
+                        data: data.map(d => d.count),
+                        backgroundColor: colors.slice(0, data.length),
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom' }
+                    }
+                }
+            });
+        }
+
+        function displayTopClasses(classes) {
+            const tableBody = document.getElementById('topClassesTable');
+            
+            tableBody.innerHTML = classes.map(cls => `
+                <tr class="border-b hover:bg-gray-50">
+                    <td class="py-2">${cls.title}</td>
+                    <td class="py-2">${cls.views}</td>
+                    <td class="py-2">${cls.enrolledStudents?.length || 0}</td>
+                </tr>
+            `).join('');
+        }
+
+        function displayActivity(activities) {
+            const tableBody = document.getElementById('activityTable');
+            
+            if (!activities || activities.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="4" class="py-4 text-center text-gray-500">No recent activity</td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tableBody.innerHTML = activities.map(activity => `
+                <tr class="border-b hover:bg-gray-50">
+                    <td class="py-2 text-sm">${new Date(activity.timestamp).toLocaleString()}</td>
+                    <td class="py-2">${activity.userName}</td>
+                    <td class="py-2">
+                        <span class="px-2 py-1 text-xs rounded-full ${getActivityColor(activity.type)}">
+                            ${activity.type}
+                        </span>
+                    </td>
+                    <td class="py-2 text-sm text-gray-600">${activity.details}</td>
+                </tr>
+            `).join('');
+        }
+
+        function getActivityColor(type) {
+            const colors = {
+                'enrollment': 'bg-green-100 text-green-800',
+                'view': 'bg-blue-100 text-blue-800',
+                'login': 'bg-purple-100 text-purple-800',
+                'registration': 'bg-yellow-100 text-yellow-800'
+            };
+            return colors[type] || 'bg-gray-100 text-gray-800';
+        }
+    </script>
+</body>
+</html>
