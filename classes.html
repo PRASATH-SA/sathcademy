@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Browse Classes - LearnStream</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .class-card {
+            transition: all 0.3s ease;
+        }
+        .class-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        .filter-sidebar {
+            height: fit-content;
+            max-height: calc(100vh - 100px);
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: #cbd5e0 #f1f5f9;
+        }
+        .filter-sidebar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .filter-sidebar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 10px;
+        }
+        .filter-sidebar::-webkit-scrollbar-thumb {
+            background: #cbd5e0;
+            border-radius: 10px;
+        }
+        .filter-sidebar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        .skeleton {
+            animation: skeleton-loading 1s linear infinite alternate;
+        }
+        @keyframes skeleton-loading {
+            0% { background-color: #e2e8f0; }
+            100% { background-color: #cbd5e0; }
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-white z-50 hidden flex items-center justify-center">
+        <div class="text-center">
+            <div class="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+            <p class="mt-4 text-gray-600">Loading classes...</p>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed top-4 right-4 z-50 hidden">
+        <div class="bg-white rounded-lg shadow-lg border-l-4 border-green-500 px-6 py-4 min-w-[300px]">
+            <div class="flex items-center">
+                <i id="toastIcon" class="fas fa-check-circle text-green-500 text-xl mr-3"></i>
+                <p id="toastMessage" class="text-gray-700 flex-1"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="bg-white shadow-sm sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <a href="/" class="flex items-center">
+                        <i class="fas fa-graduation-cap text-blue-600 text-2xl mr-2"></i>
+                        <span class="font-bold text-xl text-gray-800">LearnStream</span>
+                    </a>
+                </div>
+                <div class="hidden md:flex items-center space-x-8" id="navLinks">
+                    <!-- Will be populated by auth.js -->
+                </div>
+                <div class="md:hidden flex items-center">
+                    <button id="mobileMenuBtn" class="text-gray-500 hover:text-gray-600 focus:outline-none">
+                        <i class="fas fa-bars text-2xl"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div id="mobileNav" class="hidden md:hidden bg-white border-t border-gray-200 px-4 py-3">
+            <!-- Mobile nav will be populated -->
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Page Header -->
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-800">Browse Classes</h1>
+            <p class="text-gray-600 mt-2">Discover courses from expert instructors</p>
+        </div>
+
+        <!-- Search and Filter Bar (Mobile) -->
+        <div class="lg:hidden mb-4">
+            <button onclick="toggleMobileFilters()" 
+                    class="w-full bg-white border border-gray-300 rounded-lg px-4 py-3 text-left flex items-center justify-between">
+                <span class="flex items-center text-gray-700">
+                    <i class="fas fa-filter mr-2"></i>
+                    Filters
+                </span>
+                <span id="activeFilterCount" class="bg-blue-600 text-white px-2 py-1 rounded-full text-xs hidden">0</span>
+                <i class="fas fa-chevron-down text-gray-400"></i>
+            </button>
+        </div>
+
+        <div class="flex flex-col lg:flex-row gap-8">
+            <!-- Filters Sidebar -->
+            <div class="lg:w-1/4">
+                <div id="filtersSidebar" class="filter-sidebar bg-white rounded-lg shadow-md p-6 hidden lg:block">
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-lg font-semibold text-gray-800">Filters</h2>
+                        <button onclick="clearAllFilters()" class="text-sm text-blue-600 hover:text-blue-700">
+                            Clear All
+                        </button>
+                    </div>
+
+                    <!-- Search Filter -->
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Search</label>
+                        <div class="relative">
+                            <input type="text" 
+                                   id="searchInput"
+                                   placeholder="Search classes..." 
+                                   class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                            <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                        </div>
+                    </div>
+
+                    <!-- Class Type Filter -->
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Class Type</label>
+                        <div class="space-y-2">
+                            <label class="flex items-center">
+                                <input type="checkbox" id="typeAll" value="all" checked onchange="filterClasses()" 
+                                       class="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
+                                <span class="ml-2 text-sm text-gray-700">All Types</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" id="typeLive" value="live" onchange="filterClasses()" 
+                                       class="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
+                                <span class="ml-2 text-sm text-gray-700">Live Classes</span>
+                                <span class="ml-auto text-xs text-gray-500" id="liveCount">0</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" id="typeRecorded" value="recorded" onchange="filterClasses()" 
+                                       class="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
+                                <span class="ml-2 text-sm text-gray-700">Recorded Classes</span>
+                                <span class="ml-auto text-xs text-gray-500" id="recordedCount">0</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Categories Filter -->
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Categories</label>
+                        <div class="space-y-2 max-h-48 overflow-y-auto pr-2" id="categoriesList">
+                            <!-- Categories will be loaded dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Instructor Filter -->
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Instructor</label>
+                        <select id="instructorFilter" onchange="filterClasses()" 
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                            <option value="all">All Instructors</option>
+                        </select>
+                    </div>
+
+                    <!-- Duration Filter -->
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Duration</label>
+                        <select id="durationFilter" onchange="filterClasses()" 
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                            <option value="all">Any Duration</option>
+                            <option value="<30">Less than 30 minutes</option>
+                            <option value="30-60">30-60 minutes</option>
+                            <option value=">60">More than 60 minutes</option>
+                        </select>
+                    </div>
+
+                    <!-- Sort By -->
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Sort By</label>
+                        <select id="sortBy" onchange="filterClasses()" 
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                            <option value="newest">Newest First</option>
+                            <option value="popular">Most Popular</option>
+                            <option value="title-asc">Title A-Z</option>
+                            <option value="title-desc">Title Z-A</option>
+                            <option value="duration-asc">Duration: Short to Long</option>
+                            <option value="duration-desc">Duration: Long to Short</option>
+                        </select>
+                    </div>
+
+                    <!-- Active Filters -->
+                    <div id="activeFilters" class="hidden">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Active Filters</label>
+                        <div class="flex flex-wrap gap-2" id="activeFiltersList"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Classes Grid -->
+            <div class="lg:w-3/4">
+                <!-- Results Stats -->
+                <div class="bg-white rounded-lg shadow-sm p-4 mb-6 flex items-center justify-between">
+                    <div>
+                        <span class="text-gray-600" id="resultsCount">Loading classes...</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <button onclick="toggleView('grid')" 
+                                class="p-2 rounded-lg hover:bg-gray-100 transition" id="gridViewBtn">
+                            <i class="fas fa-th-large text-gray-600"></i>
+                        </button>
+                        <button onclick="toggleView('list')" 
+                                class="p-2 rounded-lg hover:bg-gray-100 transition" id="listViewBtn">
+                            <i class="fas fa-list text-gray-600"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Classes Container -->
+                <div id="classesContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Skeleton Loaders (shown while loading) -->
+                    <div class="skeleton-loader" id="skeletonLoader">
+                        <!-- Will be populated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Pagination -->
+                <div class="mt-8 flex items-center justify-between" id="pagination">
+                    <button onclick="changePage('prev')" 
+                            id="prevPage"
+                            class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <i class="fas fa-chevron-left mr-2"></i>
+                        Previous
+                    </button>
+                    <div class="flex items-center space-x-2" id="pageNumbers"></div>
+                    <button onclick="changePage('next')" 
+                            id="nextPage"
+                            class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                        Next
+                        <i class="fas fa-chevron-right ml-2"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick View Modal -->
+    <div id="quickViewModal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-black bg-opacity-50" onclick="closeQuickView()"></div>
+        <div class="relative min-h-screen flex items-center justify-center p-4">
+            <div class="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                <div class="p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-2xl font-bold text-gray-800" id="quickViewTitle">Class Details</h2>
+                        <button onclick="closeQuickView()" class="text-gray-400 hover:text-gray-600">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div id="quickViewContent">
+                        <!-- Quick view content will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/api.js"></script>
+    <script src="/js/auth.js"></script>
+    <script>
+        // Check authentication
+        const user = checkAuth();
+        if (!user) window.location.href = '/login.html';
+
+        // State management
+        let allClasses = [];
+        let filteredClasses = [];
+        let categories = new Map();
+        let instructors = new Set();
+        let currentPage = 1;
+        let itemsPerPage = 9;
+        let currentView = 'grid';
+        let activeFilters = {
+            search: '',
+            types: new Set(),
+            categories: new Set(),
+            instructor: 'all',
+            duration: 'all',
+            sortBy: 'newest'
+        };
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', () => {
+            loadClasses();
+            loadUserEnrolledClasses();
+            setupEventListeners();
+            checkUrlParams();
+        });
+
+        function setupEventListeners() {
+            // Search with debounce
+            let searchTimeout;
+            document.getElementById('searchInput').addEventListener('input', (e) => {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    activeFilters.search = e.target.value;
+                    filterClasses();
+                }, 500);
+            });
+
+            // Type checkboxes
+            document.getElementById('typeAll').addEventListener('change', function(e) {
+                const liveCheckbox = document.getElementById('typeLive');
+                const recordedCheckbox = document.getElementById('typeRecorded');
+                
+                if (this.checked) {
+                    liveCheckbox.checked = false;
+                    recordedCheckbox.checked = false;
+                    activeFilters.types.clear();
+                }
+                filterClasses();
+            });
+
+            document.getElementById('typeLive').addEventListener('change', updateTypeFilters);
+            document.getElementById('typeRecorded').addEventListener('change', updateTypeFilters);
+        }
+
+        function updateTypeFilters() {
+            const typeAll = document.getElementById('typeAll');
+            const liveChecked = document.getElementById('typeLive').checked;
+            const recordedChecked = document.getElementById('typeRecorded').checked;
+            
+            typeAll.checked = false;
+            activeFilters.types.clear();
+            
+            if (liveChecked) activeFilters.types.add('live');
+            if (recordedChecked) activeFilters.types.add('recorded');
+            
+            filterClasses();
+        }
+
+        async function loadClasses() {
+            showLoading();
+            try {
+                allClasses = await classesAPI.getAll();
+                processClassData();
+                displayClasses();
+                updateFilters();
+            } catch (error) {
+                console.error('Failed to load classes:', error);
+                showToast('Failed to load classes', 'error');
+                document.getElementById('classesContainer').innerHTML = `
+                    <div class="col-span-full text-center py-12">
+                        <i class="fas fa-exclamation-circle text-4xl text-red-400 mb-3"></i>
+                        <p class="text-gray-500">Failed to load classes. Please try again.</p>
+                        <button onclick="loadClasses()" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                            Retry
+                        </button>
+                    </div>
+                `;
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function loadUserEnrolledClasses() {
+            try {
+                const enrolled = await classesAPI.getMyClasses();
+                window.enrolledClassIds = new Set(enrolled.map(c => c._id));
+            } catch (error) {
+                console.error('Failed to load enrolled classes:', error);
+            }
+        }
+
+        function processClassData() {
+            categories.clear();
+            instructors.clear();
+            
+            allClasses.forEach(cls => {
+                // Count categories
+                if (cls.category) {
+                    categories.set(cls.category, (categories.get(cls.category) || 0) + 1);
+                }
+                
+                // Add instructors
+                if (cls.instructor) {
+                    instructors.add(cls.instructor);
+                }
+            });
+        }
+
+        function updateFilters() {
+            // Update type counts
+            const liveCount = allClasses.filter(c => c.type === 'live').length;
+            const recordedCount = allClasses.filter(c => c.type === 'recorded').length;
+            
+            document.getElementById('liveCount').textContent = liveCount;
+            document.getElementById('recordedCount').textContent = recordedCount;
+
+            // Update categories
+            const categoriesList = document.getElementById('categoriesList');
+            categoriesList.innerHTML = '';
+            
+            // Sort categories by count
+            const sortedCategories = Array.from(categories.entries())
+                .sort((a, b) => b[1] - a[1]);
+            
+            sortedCategories.forEach(([category, count]) => {
+                const label = document.createElement('label');
+                label.className = 'flex items-center';
+                label.innerHTML = `
+                    <input type="checkbox" value="${category}" onchange="toggleCategoryFilter('${category}')" 
+                           class="category-checkbox h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
+                    <span class="ml-2 text-sm text-gray-700">${category}</span>
+                    <span class="ml-auto text-xs text-gray-500">${count}</span>
+                `;
+                categoriesList.appendChild(label);
+            });
+
+            // Update instructor filter
+            const instructorSelect = document.getElementById('instructorFilter');
+            const currentValue = instructorSelect.value;
+            instructorSelect.innerHTML = '<option value="all">All Instructors</option>';
+            
+            Array.from(instructors).sort().forEach(instructor => {
+                const option = document.createElement('option');
+                option.value = instructor;
+                option.textContent = instructor;
+                instructorSelect.appendChild(option);
+            });
+            
+            if (currentValue !== 'all') {
+                instructorSelect.value = currentValue;
+            }
+        }
+
+        function toggleCategoryFilter(category) {
+            const checkbox = event.target;
+            if (checkbox.checked) {
+                activeFilters.categories.add(category);
+            } else {
+                activeFilters.categories.delete(category);
+            }
+            filterClasses();
+        }
+
+        function filterClasses() {
+            // Apply all filters
+            filteredClasses = allClasses.filter(cls => {
+                // Search filter
+                if (activeFilters.search && !cls.title.toLowerCase().includes(activeFilters.search.toLowerCase()) &&
+                    !cls.description.toLowerCase().includes(activeFilters.search.toLowerCase()) &&
+                    !cls.instructor.toLowerCase().includes(activeFilters.search.toLowerCase())) {
+                    return false;
+                }
+
+                // Type filter
+                if (activeFilters.types.size > 0 && !activeFilters.types.has(cls.type)) {
+                    return false;
+                }
+
+                // Category filter
+                if (activeFilters.categories.size > 0 && !activeFilters.categories.has(cls.category)) {
+                    return false;
+                }
+
+                // Instructor filter
+                if (activeFilters.instructor !== 'all' && cls.instructor !== activeFilters.instructor) {
+                    return false;
+                }
+
+                // Duration filter
+                if (activeFilters.duration !== 'all') {
+                    const duration = parseInt(cls.duration) || 0;
+                    if (activeFilters.duration === '<30' && duration >= 30) return false;
+                    if (activeFilters.duration === '30-60' && (duration < 30 || duration > 60)) return false;
+                    if (activeFilters.duration === '>60' && duration <= 60) return false;
+                }
+
+                return true;
+            });
+
+            // Apply sorting
+            applySorting();
+
+            // Update UI
+            updateActiveFiltersDisplay();
+            currentPage = 1;
+            displayClasses();
+            updateResultsCount();
+        }
+
+        function applySorting() {
+            const sortBy = document.getElementById('sortBy').value;
+            
+            switch(sortBy) {
+                case 'newest':
+                    filteredClasses.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+                    break;
+                case 'popular':
+                    filteredClasses.sort((a, b) => b.views - a.views);
+                    break;
+                case 'title-asc':
+                    filteredClasses.sort((a, b) => a.title.localeCompare(b.title));
+                    break;
+                case 'title-desc':
+                    filteredClasses.sort((a, b) => b.title.localeCompare(a.title));
+                    break;
+                case 'duration-asc':
+                    filteredClasses.sort((a, b) => (parseInt(a.duration) || 0) - (parseInt(b.duration) || 0));
+                    break;
+                case 'duration-desc':
+                    filteredClasses.sort((a, b) => (parseInt(b.duration) || 0) - (parseInt(a.duration) || 0));
+                    break;
+            }
+        }
+
+        function updateActiveFiltersDisplay() {
+            const activeFiltersDiv = document.getElementById('activeFilters');
+            const activeFiltersList = document.getElementById('activeFiltersList');
+            const filterCount = document.getElementById('activeFilterCount');
+            
+            let count = 0;
+            activeFiltersList.innerHTML = '';
+
+            // Add filter chips
+            if (activeFilters.search) {
+                count++;
+                addFilterChip('Search: ' + activeFilters.search, () => {
+                    activeFilters.search = '';
+                    document.getElementById('searchInput').value = '';
+                    filterClasses();
+                });
+            }
+
+            activeFilters.types.forEach(type => {
+                count++;
+                addFilterChip(type.charAt(0).toUpperCase() + type.slice(1), () => {
+                    document.getElementById(`type${type.charAt(0).toUpperCase() + type.slice(1)}`).checked = false;
+                    activeFilters.types.delete(type);
+                    filterClasses();
+                });
+            });
+
+            activeFilters.categories.forEach(category => {
+                count++;
+                addFilterChip(category, () => {
+                    document.querySelectorAll('.category-checkbox').forEach(cb => {
+                        if (cb.value === category) cb.checked = false;
+                    });
+                    activeFilters.categories.delete(category);
+                    filterClasses();
+                });
+            });
+
+            if (activeFilters.instructor !== 'all') {
+                count++;
+                addFilterChip('Instructor: ' + activeFilters.instructor, () => {
+                    document.getElementById('instructorFilter').value = 'all';
+                    activeFilters.instructor = 'all';
+                    filterClasses();
+                });
+            }
+
+            if (count > 0) {
+                activeFiltersDiv.classList.remove('hidden');
+                filterCount.textContent = count;
+                filterCount.classList.remove('hidden');
+            } else {
+                activeFiltersDiv.classList.add('hidden');
+                filterCount.classList.add('hidden');
+            }
+        }
+
+        function addFilterChip(text, onRemove) {
+            const chip = document.createElement('span');
+            chip.className = 'inline-flex items-center bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm';
+            chip.innerHTML = `
+                ${text}
+                <button onclick="(${onRemove})()" class="ml-2 text-blue-600 hover:text-blue-800">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            document.getElementById('activeFiltersList').appendChild(chip);
+        }
+
+        function clearAllFilters() {
+            // Reset search
+            document.getElementById('searchInput').value = '';
+            activeFilters.search = '';
+
+            // Reset types
+            document.getElementById('typeAll').checked = true;
+            document.getElementById('typeLive').checked = false;
+            document.getElementById('typeRecorded').checked = false;
+            activeFilters.types.clear();
+
+            // Reset categories
+            document.querySelectorAll('.category-checkbox').forEach(cb => cb.checked = false);
+            activeFilters.categories.clear();
+
+            // Reset instructor
+            document.getElementById('instructorFilter').value = 'all';
+            activeFilters.instructor = 'all';
+
+            // Reset duration
+            document.getElementById('durationFilter').value = 'all';
+            activeFilters.duration = 'all';
+
+            // Reset sort
+            document.getElementById('sortBy').value = 'newest';
+            
+            filterClasses();
+        }
+
+        function displayClasses() {
+            const container = document.getElementById('classesContainer');
+            const start = (currentPage - 1) * itemsPerPage;
+            const end = start + itemsPerPage;
+            const pageClasses = filteredClasses.slice(start, end);
+
+            if (filteredClasses.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-full text-center py-12">
+                        <i class="fas fa-search text-5xl text-gray-300 mb-3"></i>
+                        <p class="text-xl text-gray-600 mb-2">No classes found</p>
+                        <p class="text-gray-500">Try adjusting your filters</p>
+                        <button onclick="clearAllFilters()" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                            Clear Filters
+                        </button>
+                    </div>
+                `;
+                updatePagination(0);
+                return;
+            }
+
+            if (currentView === 'grid') {
+                container.className = 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6';
+                container.innerHTML = pageClasses.map(cls => createClassCard(cls)).join('');
+            } else {
+                container.className = 'grid grid-cols-1 gap-4';
+                container.innerHTML = pageClasses.map(cls => createClassListItem(cls)).join('');
+            }
+
+            updatePagination(filteredClasses.length);
+        }
+
+        function createClassCard(cls) {
+            const isEnrolled = window.enrolledClassIds?.has(cls._id);
+            
+            return `
+                <div class="class-card bg-white rounded-lg shadow-md overflow-hidden cursor-pointer" 
+                     onclick="window.location.href='/class-detail.html?id=${cls._id}'">
+                    <div class="relative pb-[56.25%] bg-gray-200">
+                        <img src="${cls.thumbnail || 'https://via.placeholder.com/400x225'}" 
+                             alt="${cls.title}"
+                             class="absolute inset-0 w-full h-full object-cover"
+                             onerror="this.src='https://via.placeholder.com/400x225'">
+                        ${cls.type === 'live' ? `
+                            <span class="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                                <i class="fas fa-circle animate-pulse mr-1"></i>
+                                LIVE
+                            </span>
+                        ` : ''}
+                        ${isEnrolled ? `
+                            <span class="absolute top-2 left-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full">
+                                <i class="fas fa-check-circle mr-1"></i>
+                                Enrolled
+                            </span>
+                        ` : ''}
+                    </div>
+                    <div class="p-4">
+                        <div class="flex items-start justify-between mb-2">
+                            <h3 class="font-semibold text-lg text-gray-800 line-clamp-2">${cls.title}</h3>
+                        </div>
+                        <p class="text-sm text-gray-600 mb-2">${cls.instructor}</p>
+                        <p class="text-sm text-gray-500 mb-3 line-clamp-2">${cls.description}</p>
+                        <div class="flex items-center justify-between text-xs text-gray-500">
+                            <span><i class="far fa-clock mr-1"></i>${cls.duration}</span>
+                            <span><i class="far fa-eye mr-1"></i>${cls.views} views</span>
+                        </div>
+                        <div class="mt-3 flex items-center justify-between">
+                            <span class="text-xs px-2 py-1 bg-gray-100 rounded-full text-gray-600">
+                                ${cls.category}
+                            </span>
+                            ${!isEnrolled ? `
+                                <button onclick="quickEnroll('${cls._id}', event)" 
+                                        class="text-blue-600 hover:text-blue-700 text-sm font-medium">
+                                    Enroll Now <i class="fas fa-arrow-right ml-1"></i>
+                                </button>
+                            ` : `
+                                <span class="text-green-600 text-sm font-medium">
+                                    <i class="fas fa-check mr-1"></i>Enrolled
+                                </span>
+                            `}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function createClassListItem(cls) {
+            const isEnrolled = window.enrolledClassIds?.has(cls._id);
+            
+            return `
+                <div class="class-card bg-white rounded-lg shadow-md overflow-hidden cursor-pointer flex" 
+                     onclick="window.location.href='/class-detail.html?id=${cls._id}'">
+                    <div class="w-48 relative bg-gray-200">
+                        <img src="${cls.thumbnail || 'https://via.placeholder.com/400x225'}" 
+                             alt="${cls.title}"
+                             class="w-full h-full object-cover"
+                             onerror="this.src='https://via.placeholder.com/400x225'">
+                        ${cls.type === 'live' ? `
+                            <span class="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                                LIVE
+                            </span>
+                        ` : ''}
+                    </div>
+                    <div class="flex-1 p-4">
+                        <div class="flex items-start justify-between mb-2">
+                            <div>
+                                <h3 class="font-semibold text-lg text-gray-800">${cls.title}</h3>
+                                <p class="text-sm text-gray-600">${cls.instructor}</p>
+                            </div>
+                            ${isEnrolled ? `
+                                <span class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
+                                    Enrolled
+                                </span>
+                            ` : ''}
+                        </div>
+                        <p class="text-sm text-gray-500 mb-3">${cls.description}</p>
+                        <div class="flex items-center space-x-4 text-sm">
+                            <span class="text-gray-500"><i class="far fa-clock mr-1"></i>${cls.duration}</span>
+                            <span class="text-gray-500"><i class="far fa-eye mr-1"></i>${cls.views} views</span>
+                            <span class="text-gray-500"><i class="fas fa-tag mr-1"></i>${cls.category}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function updateResultsCount() {
+            document.getElementById('resultsCount').innerHTML = `
+                Showing <span class="font-medium">${filteredClasses.length}</span> classes
+            `;
+        }
+
+        function updatePagination(totalItems) {
+            const totalPages = Math.ceil(totalItems / itemsPerPage);
+            const prevBtn = document.getElementById('prevPage');
+            const nextBtn = document.getElementById('nextPage');
+            const pageNumbers = document.getElementById('pageNumbers');
+
+            prevBtn.disabled = currentPage === 1;
+            nextBtn.disabled = currentPage === totalPages || totalPages === 0;
+
+            // Generate page numbers
+            pageNumbers.innerHTML = '';
+            for (let i = 1; i <= totalPages; i++) {
+                if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+                    const btn = document.createElement('button');
+                    btn.className = `px-3 py-1 rounded-md text-sm ${i === currentPage ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100'}`;
+                    btn.textContent = i;
+                    btn.onclick = () => goToPage(i);
+                    pageNumbers.appendChild(btn);
+                } else if (i === currentPage - 3 || i === currentPage + 3) {
+                    const span = document.createElement('span');
+                    span.className = 'text-gray-400';
+                    span.textContent = '...';
+                    pageNumbers.appendChild(span);
+                }
+            }
+        }
+
+        function changePage(direction) {
+            if (direction === 'prev' && currentPage > 1) {
+                currentPage--;
+            } else if (direction === 'next') {
+                const totalPages = Math.ceil(filteredClasses.length / itemsPerPage);
+                if (currentPage < totalPages) {
+                    currentPage++;
+                }
+            }
+            displayClasses();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function goToPage(page) {
+            currentPage = page;
+            displayClasses();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function toggleView(view) {
+            currentView = view;
+            document.getElementById('gridViewBtn').classList.toggle('bg-gray-100', view === 'grid');
+            document.getElementById('listViewBtn').classList.toggle('bg-gray-100', view === 'list');
+            displayClasses();
+        }
+
+        async function quickEnroll(classId, event) {
+            event.stopPropagation();
+            
+            showLoading();
+            try {
+                await classesAPI.enroll(classId);
+                window.enrolledClassIds.add(classId);
+                showToast('Successfully enrolled!', 'success');
+                
+                // Update the card UI
+                displayClasses();
+            } catch (error) {
+                showToast(error.message, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function showQuickView(classId) {
+            const cls = allClasses.find(c => c._id === classId);
+            if (!cls) return;
+
+            const content = document.getElementById('quickViewContent');
+            content.innerHTML = `
+                <div class="mb-4">
+                    <img src="${cls.thumbnail || 'https://via.placeholder.com/600x340'}" 
+                         alt="${cls.title}"
+                         class="w-full h-48 object-cover rounded-lg">
+                </div>
+                <h3 class="text-xl font-semibold mb-2">${cls.title}</h3>
+                <p class="text-gray-600 mb-2">${cls.instructor}</p>
+                <p class="text-gray-700 mb-4">${cls.description}</p>
+                <div class="flex items-center space-x-4 text-sm text-gray-500 mb-4">
+                    <span><i class="far fa-clock mr-1"></i>${cls.duration}</span>
+                    <span><i class="far fa-eye mr-1"></i>${cls.views} views</span>
+                    <span><i class="fas fa-tag mr-1"></i>${cls.category}</span>
+                </div>
+                <button onclick="window.location.href='/class-detail.html?id=${cls._id}'" 
+                        class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700">
+                    View Full Details
+                </button>
+            `;
+
+            document.getElementById('quickViewModal').classList.remove('hidden');
+        }
+
+        function closeQuickView() {
+            document.getElementById('quickViewModal').classList.add('hidden');
+        }
+
+        function toggleMobileFilters() {
+            const sidebar = document.getElementById('filtersSidebar');
+            sidebar.classList.toggle('hidden');
+            sidebar.classList.toggle('block');
+        }
+
+        function checkUrlParams() {
+            const urlParams = new URLSearchParams(window.location.search);
+            
+            // Check for search param
+            const search = urlParams.get('search');
+            if (search) {
+                document.getElementById('searchInput').value = search;
+                activeFilters.search = search;
+            }
+
+            // Check for category param
+            const category = urlParams.get('category');
+            if (category) {
+                setTimeout(() => {
+                    document.querySelectorAll('.category-checkbox').forEach(cb => {
+                        if (cb.value === category) {
+                            cb.checked = true;
+                            activeFilters.categories.add(category);
+                        }
+                    });
+                }, 500);
+            }
+
+            // Check for type param
+            const type = urlParams.get('type');
+            if (type) {
+                if (type === 'live' || type === 'recorded') {
+                    document.getElementById(`type${type.charAt(0).toUpperCase() + type.slice(1)}`).checked = true;
+                    document.getElementById('typeAll').checked = false;
+                    activeFilters.types.add(type);
+                }
+            }
+
+            if (search || category || type) {
+                setTimeout(filterClasses, 1000);
+            }
+        }
+
+        // Helper functions
+        function showLoading() {
+            document.getElementById('loadingOverlay').classList.remove('hidden');
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingOverlay').classList.add('hidden');
+        }
+
+        function showToast(message, type) {
+            const toast = document.getElementById('toast');
+            const toastMessage = document.getElementById('toastMessage');
+            const toastIcon = document.getElementById('toastIcon');
+            
+            toastMessage.textContent = message;
+            
+            if (type === 'success') {
+                toastIcon.className = 'fas fa-check-circle text-green-500 text-xl mr-3';
+                toast.className = 'bg-white rounded-lg shadow-lg border-l-4 border-green-500 px-6 py-4 min-w-[300px]';
+            } else {
+                toastIcon.className = 'fas fa-exclamation-circle text-red-500 text-xl mr-3';
+                toast.className = 'bg-white rounded-lg shadow-lg border-l-4 border-red-500 px-6 py-4 min-w-[300px]';
+            }
+            
+            toast.classList.remove('hidden');
+            
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
