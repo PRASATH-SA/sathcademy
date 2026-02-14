@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Classes - LearnStream Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-white z-50 hidden flex items-center justify-center">
+        <div class="text-center">
+            <div class="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+            <p class="mt-4 text-gray-600">Loading...</p>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed top-4 right-4 z-50 hidden">
+        <div class="bg-white rounded-lg shadow-lg border-l-4 border-green-500 px-6 py-4 min-w-[300px]">
+            <div class="flex items-center">
+                <i id="toastIcon" class="fas fa-check-circle text-green-500 text-xl mr-3"></i>
+                <p id="toastMessage" class="text-gray-700 flex-1"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Navigation (same as admin/dashboard.html) -->
+    <nav class="bg-gray-900 text-white sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <i class="fas fa-graduation-cap text-blue-400 text-2xl mr-2"></i>
+                    <span class="font-bold text-xl">LearnStream Admin</span>
+                </div>
+                <div class="hidden md:flex items-center space-x-8">
+                    <a href="/admin/dashboard.html" class="text-gray-300 hover:text-white px-3 py-2">Dashboard</a>
+                    <a href="/admin/classes.html" class="text-white bg-gray-800 px-3 py-2 rounded-md">Classes</a>
+                    <a href="/admin/users.html" class="text-gray-300 hover:text-white px-3 py-2">Users</a>
+                    <a href="/admin/analytics.html" class="text-gray-300 hover:text-white px-3 py-2">Analytics</a>
+                    <div class="relative group">
+                        <button class="flex items-center space-x-2 text-gray-300">
+                            <span>Admin</span>
+                            <i class="fas fa-chevron-down text-xs"></i>
+                        </button>
+                        <div class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 hidden group-hover:block">
+                            <a href="/profile.html" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Profile</a>
+                            <a href="/" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">View Site</a>
+                            <button onclick="logout()" class="block w-full text-left px-4 py-2 text-red-600 hover:bg-gray-100">Logout</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="flex justify-between items-center mb-8">
+            <h1 class="text-3xl font-bold text-gray-800">Manage Classes</h1>
+            <button onclick="openClassModal()" 
+                    class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition flex items-center">
+                <i class="fas fa-plus-circle mr-2"></i>
+                Add New Class
+            </button>
+        </div>
+
+        <!-- Classes Table -->
+        <div class="bg-white rounded-lg shadow-md overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="min-w-full">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Instructor</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Views</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Students</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200" id="classesTableBody">
+                        <!-- Classes will be loaded here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Class Modal -->
+    <div id="classModal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-black bg-opacity-50" onclick="closeClassModal()"></div>
+        <div class="relative min-h-screen flex items-center justify-center p-4">
+            <div class="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                <div class="p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-2xl font-bold text-gray-800" id="modalTitle">Add New Class</h2>
+                        <button onclick="closeClassModal()" class="text-gray-400 hover:text-gray-600">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+
+                    <form id="classForm" onsubmit="handleClassSubmit(event)">
+                        <input type="hidden" id="classId">
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label class="block text-gray-700 text-sm font-medium mb-2">Title</label>
+                                <input type="text" id="title" required 
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-gray-700 text-sm font-medium mb-2">Instructor</label>
+                                <input type="text" id="instructor" required 
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-medium mb-2">Description</label>
+                            <textarea id="description" rows="3" required 
+                                      class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"></textarea>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label class="block text-gray-700 text-sm font-medium mb-2">Type</label>
+                                <select id="type" required 
+                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                                    <option value="recorded">Recorded</option>
+                                    <option value="live">Live</option>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-gray-700 text-sm font-medium mb-2">Category</label>
+                                <input type="text" id="category" required 
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label class="block text-gray-700 text-sm font-medium mb-2">Video URL (YouTube)</label>
+                                <input type="url" id="videoUrl" required 
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-gray-700 text-sm font-medium mb-2">Duration</label>
+                                <input type="text" id="duration" required placeholder="e.g., 45 minutes"
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-medium mb-2">Thumbnail URL</label>
+                            <input type="url" id="thumbnail" 
+                                   placeholder="https://example.com/image.jpg"
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                        </div>
+
+                        <div class="mb-4" id="liveScheduleField">
+                            <label class="block text-gray-700 text-sm font-medium mb-2">Schedule (for live classes)</label>
+                            <input type="datetime-local" id="schedule" 
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                        </div>
+
+                        <div class="flex justify-end space-x-3">
+                            <button type="button" onclick="closeClassModal()" 
+                                    class="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition">
+                                Cancel
+                            </button>
+                            <button type="submit" 
+                                    class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                                Save Class
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/api.js"></script>
+    <script src="/js/auth.js"></script>
+    <script>
+        // Check admin authentication
+        const admin = checkAdmin();
+        if (!admin) window.location.href = '/login.html';
+
+        let currentClasses = [];
+
+        // Load classes
+        document.addEventListener('DOMContentLoaded', async () => {
+            showLoading();
+            try {
+                currentClasses = await adminAPI.getClasses();
+                displayClasses(currentClasses);
+            } catch (error) {
+                console.error('Failed to load classes:', error);
+                showToast('Failed to load classes', 'error');
+            } finally {
+                hideLoading();
+            }
+        });
+
+        function displayClasses(classes) {
+            const tableBody = document.getElementById('classesTableBody');
+            
+            if (!classes || classes.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="px-6 py-4 text-center text-gray-500">
+                            No classes found. Click "Add New Class" to create one.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tableBody.innerHTML = classes.map(cls => `
+                <tr>
+                    <td class="px-6 py-4 whitespace-nowrap">${cls.title}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">${cls.instructor}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 py-1 text-xs rounded-full ${cls.type === 'live' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'}">
+                            ${cls.type}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">${cls.category}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">${cls.views}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">${cls.enrolledStudents?.length || 0}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 py-1 text-xs rounded-full ${cls.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}">
+                            ${cls.isActive ? 'Active' : 'Inactive'}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                        <button onclick="editClass('${cls._id}')" class="text-blue-600 hover:text-blue-900 mr-3">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button onclick="deleteClass('${cls._id}')" class="text-red-600 hover:text-red-900">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function openClassModal(classData = null) {
+            const modal = document.getElementById('classModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const form = document.getElementById('classForm');
+            
+            if (classData) {
+                modalTitle.textContent = 'Edit Class';
+                document.getElementById('classId').value = classData._id;
+                document.getElementById('title').value = classData.title;
+                document.getElementById('description').value = classData.description;
+                document.getElementById('instructor').value = classData.instructor;
+                document.getElementById('type').value = classData.type;
+                document.getElementById('category').value = classData.category;
+                document.getElementById('videoUrl').value = classData.videoUrl;
+                document.getElementById('duration').value = classData.duration;
+                document.getElementById('thumbnail').value = classData.thumbnail || '';
+                
+                if (classData.schedule) {
+                    document.getElementById('schedule').value = classData.schedule.slice(0, 16);
+                }
+            } else {
+                modalTitle.textContent = 'Add New Class';
+                form.reset();
+                document.getElementById('classId').value = '';
+            }
+            
+            modal.classList.remove('hidden');
+        }
+
+        function closeClassModal() {
+            document.getElementById('classModal').classList.add('hidden');
+        }
+
+        async function handleClassSubmit(event) {
+            event.preventDefault();
+            
+            const classId = document.getElementById('classId').value;
+            const classData = {
+                title: document.getElementById('title').value,
+                description: document.getElementById('description').value,
+                instructor: document.getElementById('instructor').value,
+                type: document.getElementById('type').value,
+                category: document.getElementById('category').value,
+                videoUrl: document.getElementById('videoUrl').value,
+                duration: document.getElementById('duration').value,
+                thumbnail: document.getElementById('thumbnail').value || undefined,
+            };
+            
+            if (classData.type === 'live') {
+                classData.schedule = document.getElementById('schedule').value;
+            }
+            
+            showLoading();
+            
+            try {
+                if (classId) {
+                    await adminAPI.updateClass(classId, classData);
+                    showToast('Class updated successfully!', 'success');
+                } else {
+                    await adminAPI.createClass(classData);
+                    showToast('Class created successfully!', 'success');
+                }
+                
+                closeClassModal();
+                
+                // Refresh classes
+                currentClasses = await adminAPI.getClasses();
+                displayClasses(currentClasses);
+            } catch (error) {
+                showToast(error.message, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function editClass(id) {
+            const classData = currentClasses.find(c => c._id === id);
+            if (classData) {
+                openClassModal(classData);
+            }
+        }
+
+        async function deleteClass(id) {
+            if (!confirm('Are you sure you want to delete this class?')) return;
+            
+            showLoading();
+            try {
+                await adminAPI.deleteClass(id);
+                showToast('Class deleted successfully!', 'success');
+                
+                // Refresh classes
+                currentClasses = await adminAPI.getClasses();
+                displayClasses(currentClasses);
+            } catch (error) {
+                showToast(error.message, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Show/hide schedule field based on class type
+        document.getElementById('type').addEventListener('change', function() {
+            const scheduleField = document.getElementById('liveScheduleField');
+            if (this.value === 'live') {
+                scheduleField.classList.remove('hidden');
+                document.getElementById('schedule').required = true;
+            } else {
+                scheduleField.classList.add('hidden');
+                document.getElementById('schedule').required = false;
+            }
+        });
+    </script>
+</body>
+</html>
