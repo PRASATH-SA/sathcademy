@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Profile - LearnStream</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-50">
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-white z-50 hidden flex items-center justify-center">
+        <div class="text-center">
+            <div class="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+            <p class="mt-4 text-gray-600">Loading...</p>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed top-4 right-4 z-50 hidden">
+        <div class="bg-white rounded-lg shadow-lg border-l-4 border-green-500 px-6 py-4 min-w-[300px]">
+            <div class="flex items-center">
+                <i id="toastIcon" class="fas fa-check-circle text-green-500 text-xl mr-3"></i>
+                <p id="toastMessage" class="text-gray-700 flex-1"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="bg-white shadow-sm sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <a href="/" class="flex items-center">
+                        <i class="fas fa-graduation-cap text-blue-600 text-2xl mr-2"></i>
+                        <span class="font-bold text-xl text-gray-800">LearnStream</span>
+                    </a>
+                </div>
+                <div class="hidden md:flex items-center space-x-8" id="navLinks"></div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Profile Header -->
+        <div class="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl p-8 text-white mb-8">
+            <div class="flex items-center">
+                <div class="w-24 h-24 bg-white rounded-full flex items-center justify-center text-4xl font-bold text-blue-600">
+                    <span id="userInitial"></span>
+                </div>
+                <div class="ml-6">
+                    <h1 class="text-3xl font-bold mb-2" id="userName">Loading...</h1>
+                    <p class="text-blue-100" id="userEmail">Loading...</p>
+                    <p class="text-blue-100 text-sm mt-1" id="userRole"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Profile Content -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Profile Settings -->
+            <div class="lg:col-span-2">
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-bold text-gray-800 mb-6">Profile Settings</h2>
+                    
+                    <form id="profileForm" onsubmit="handleProfileUpdate(event)">
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-medium mb-2">Full Name</label>
+                            <input type="text" id="profileName" required 
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-medium mb-2">Email Address</label>
+                            <input type="email" id="profileEmail" required disabled
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500">
+                            <p class="text-xs text-gray-500 mt-1">Email cannot be changed</p>
+                        </div>
+
+                        <div class="mb-6">
+                            <label class="block text-gray-700 text-sm font-medium mb-2">Profile Picture URL</label>
+                            <input type="url" id="profilePicture" 
+                                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                        </div>
+
+                        <button type="submit" 
+                                class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition font-medium">
+                            Update Profile
+                        </button>
+                    </form>
+
+                    <!-- Change Password Section -->
+                    <div class="mt-8 pt-6 border-t border-gray-200">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">Change Password</h3>
+                        
+                        <form id="passwordForm" onsubmit="handlePasswordChange(event)">
+                            <div class="mb-4">
+                                <label class="block text-gray-700 text-sm font-medium mb-2">Current Password</label>
+                                <input type="password" id="currentPassword" required 
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="block text-gray-700 text-sm font-medium mb-2">New Password</label>
+                                <input type="password" id="newPassword" required minlength="6"
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                            </div>
+
+                            <div class="mb-6">
+                                <label class="block text-gray-700 text-sm font-medium mb-2">Confirm New Password</label>
+                                <input type="password" id="confirmPassword" required minlength="6"
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                            </div>
+
+                            <button type="submit" 
+                                    class="bg-gray-800 text-white px-6 py-3 rounded-lg hover:bg-gray-900 transition font-medium">
+                                Update Password
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div class="lg:col-span-1">
+                <!-- Account Stats -->
+                <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Account Stats</h3>
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-600">Member since:</span>
+                            <span class="font-medium text-gray-800" id="memberSince">Loading...</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-600">Last login:</span>
+                            <span class="font-medium text-gray-800" id="lastLogin">Loading...</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-600">Enrolled classes:</span>
+                            <span class="font-medium text-gray-800" id="enrolledCount">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Quick Actions</h3>
+                    <div class="space-y-2">
+                        <a href="/dashboard.html" 
+                           class="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition">
+                            <i class="fas fa-tachometer-alt mr-2"></i>
+                            Go to Dashboard
+                        </a>
+                        <a href="/classes.html" 
+                           class="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition">
+                            <i class="fas fa-book mr-2"></i>
+                            Browse Classes
+                        </a>
+                        <button onclick="logout()" 
+                                class="block w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition">
+                            <i class="fas fa-sign-out-alt mr-2"></i>
+                            Logout
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/api.js"></script>
+    <script src="/js/auth.js"></script>
+    <script>
+        // Check authentication
+        const user = checkAuth();
+        if (!user) window.location.href = '/login.html';
+
+        let userData = null;
+
+        // Load user data
+        document.addEventListener('DOMContentLoaded', async () => {
+            showLoading();
+            try {
+                userData = await authAPI.getMe();
+                displayUserProfile(userData);
+            } catch (error) {
+                console.error('Failed to load profile:', error);
+                showToast('Failed to load profile data', 'error');
+            } finally {
+                hideLoading();
+            }
+        });
+
+        function displayUserProfile(data) {
+            document.getElementById('userName').textContent = data.name;
+            document.getElementById('userEmail').textContent = data.email;
+            document.getElementById('userInitial').textContent = data.name.charAt(0).toUpperCase();
+            
+            // Show role badge
+            const userRole = document.getElementById('userRole');
+            if (data.role === 'admin') {
+                userRole.innerHTML = '<span class="bg-yellow-300 text-yellow-900 px-2 py-1 rounded-full text-xs">Administrator</span>';
+            } else {
+                userRole.innerHTML = '<span class="bg-green-300 text-green-900 px-2 py-1 rounded-full text-xs">Student</span>';
+            }
+
+            // Fill form
+            document.getElementById('profileName').value = data.name;
+            document.getElementById('profileEmail').value = data.email;
+            document.getElementById('profilePicture').value = data.profilePicture || '';
+
+            // Stats
+            document.getElementById('memberSince').textContent = new Date(data.createdAt).toLocaleDateString();
+            document.getElementById('lastLogin').textContent = data.lastLogin ? new Date(data.lastLogin).toLocaleDateString() : 'Never';
+            document.getElementById('enrolledCount').textContent = data.enrolledClasses?.length || 0;
+        }
+
+        async function handleProfileUpdate(event) {
+            event.preventDefault();
+            
+            const updatedData = {
+                name: document.getElementById('profileName').value,
+                profilePicture: document.getElementById('profilePicture').value
+            };
+            
+            showLoading();
+            
+            try {
+                // Note: You'll need to add this endpoint to your API
+                const response = await apiCall('/users/profile', 'PUT', updatedData);
+                showToast('Profile updated successfully!', 'success');
+                
+                // Update local user data
+                const user = JSON.parse(localStorage.getItem('user'));
+                user.name = updatedData.name;
+                localStorage.setItem('user', JSON.stringify(user));
+                
+                // Update display
+                document.getElementById('userName').textContent = updatedData.name;
+                document.getElementById('userInitial').textContent = updatedData.name.charAt(0).toUpperCase();
+            } catch (error) {
+                showToast(error.message, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function handlePasswordChange(event) {
+            event.preventDefault();
+            
+            const currentPassword = document.getElementById('currentPassword').value;
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            
+            if (newPassword !== confirmPassword) {
+                showToast('New passwords do not match', 'error');
+                return;
+            }
+            
+            if (newPassword.length < 6) {
+                showToast('Password must be at least 6 characters', 'error');
+                return;
+            }
+            
+            showLoading();
+            
+            try {
+                // Note: You'll need to add this endpoint to your API
+                await apiCall('/users/change-password', 'POST', {
+                    currentPassword,
+                    newPassword
+                });
+                
+                showToast('Password updated successfully!', 'success');
+                document.getElementById('passwordForm').reset();
+            } catch (error) {
+                showToast(error.message, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+    </script>
+</body>
+</html>

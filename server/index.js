@@ -201,6 +201,138 @@ app.post('/api/auth/register', [
     res.status(500).json({ message: 'Server error: ' + error.message });
   }
 });
+// ==================== FORGOT PASSWORD ROUTES ====================
+
+// Generate and send reset code
+app.post('/api/auth/forgot-password', [
+  body('email').isEmail().normalizeEmail()
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { email } = req.body;
+    
+    // Find user
+    const user = await User.findOne({ email });
+    if (!user) {
+      // Return success even if user doesn't exist (security)
+      return res.json({ message: 'If an account exists, a reset code will be sent' });
+    }
+
+    // Generate 6-digit code
+    const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const resetToken = jwt.sign(
+      { userId: user._id, code: resetCode },
+      process.env.JWT_SECRET,
+      { expiresIn: '15m' }
+    );
+
+    // Store reset info (you'd typically save this in database)
+    // For simplicity, we'll use a Map or Redis in production
+    if (!global.resetCodes) global.resetCodes = new Map();
+    global.resetCodes.set(user._id.toString(), {
+      code: resetCode,
+      expires: Date.now() + 15 * 60 * 1000
+    });
+
+    // Send email (implement your email service)
+    console.log(`Reset code for ${email}: ${resetCode}`);
+    
+    // In production, send actual email
+    // await sendResetEmail(email, resetCode);
+
+    res.json({ message: 'Reset code sent successfully' });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Verify reset code
+app.post('/api/auth/verify-reset-code', [
+  body('email').isEmail().normalizeEmail(),
+  body('code').isLength({ min: 6, max: 6 })
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { email, code } = req.body;
+    
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(400).json({ message: 'Invalid or expired code' });
+    }
+
+    const resetData = global.resetCodes?.get(user._id.toString());
+    
+    if (!resetData || resetData.code !== code || resetData.expires < Date.now()) {
+      return res.status(400).json({ message: 'Invalid or expired code' });
+    }
+
+    // Generate temporary token for password reset
+    const resetToken = jwt.sign(
+      { userId: user._id, purpose: 'password-reset' },
+      process.env.JWT_SECRET,
+      { expiresIn: '10m' }
+    );
+
+    res.json({ 
+      message: 'Code verified successfully',
+      resetToken 
+    });
+  } catch (error) {
+    console.error('Verify code error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Reset password
+app.post('/api/auth/reset-password', [
+  body('token').notEmpty(),
+  body('newPassword').isLength({ min: 6 })
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { token, newPassword } = req.body;
+
+    // Verify token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    if (decoded.purpose !== 'password-reset') {
+      return res.status(400).json({ message: 'Invalid reset token' });
+    }
+
+    const user = await User.findById(decoded.userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Update password
+    user.password = newPassword;
+    await user.save();
+
+    // Clear reset code
+    global.resetCodes?.delete(user._id.toString());
+
+    res.json({ message: 'Password reset successful' });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(400).json({ message: 'Invalid or expired token' });
+    }
+    res.status(500).json({ message: 'Server error' });
+  }
+});
 
 app.post('/api/auth/login', [
   body('email').isEmail().normalizeEmail(),

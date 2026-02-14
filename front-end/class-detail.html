@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Class Details - LearnStream</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .video-container {
+            position: relative;
+            padding-bottom: 56.25%;
+            height: 0;
+            overflow: hidden;
+        }
+        .video-container iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-white z-50 hidden flex items-center justify-center">
+        <div class="text-center">
+            <div class="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+            <p class="mt-4 text-gray-600">Loading...</p>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed top-4 right-4 z-50 hidden">
+        <div class="bg-white rounded-lg shadow-lg border-l-4 border-green-500 px-6 py-4 min-w-[300px]">
+            <div class="flex items-center">
+                <i id="toastIcon" class="fas fa-check-circle text-green-500 text-xl mr-3"></i>
+                <p id="toastMessage" class="text-gray-700 flex-1"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="bg-white shadow-sm sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <a href="/" class="flex items-center">
+                        <i class="fas fa-graduation-cap text-blue-600 text-2xl mr-2"></i>
+                        <span class="font-bold text-xl text-gray-800">LearnStream</span>
+                    </a>
+                </div>
+                <div class="hidden md:flex items-center space-x-8" id="navLinks"></div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Back Button -->
+        <div class="mb-6">
+            <button onclick="history.back()" class="flex items-center text-gray-600 hover:text-blue-600 transition">
+                <i class="fas fa-arrow-left mr-2"></i>
+                Back to Classes
+            </button>
+        </div>
+
+        <!-- Class Details -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Video and Main Content -->
+            <div class="lg:col-span-2">
+                <!-- Video Player -->
+                <div class="bg-black rounded-lg overflow-hidden shadow-lg mb-6">
+                    <div class="video-container" id="videoContainer">
+                        <!-- Video will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- Class Info -->
+                <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                    <div class="flex items-start justify-between mb-4">
+                        <div>
+                            <h1 class="text-3xl font-bold text-gray-800 mb-2" id="classTitle">Loading...</h1>
+                            <div class="flex items-center text-gray-600">
+                                <i class="fas fa-user-tie mr-2"></i>
+                                <span id="classInstructor">Loading...</span>
+                                <span class="mx-2">•</span>
+                                <i class="fas fa-clock mr-2"></i>
+                                <span id="classDuration">Loading...</span>
+                                <span class="mx-2">•</span>
+                                <i class="fas fa-eye mr-2"></i>
+                                <span id="classViews">0</span> views
+                            </div>
+                        </div>
+                        <div>
+                            <span id="classTypeBadge" class="px-3 py-1 text-sm font-semibold rounded-full hidden"></span>
+                        </div>
+                    </div>
+
+                    <div class="border-t border-gray-200 pt-4 mt-4">
+                        <h2 class="text-xl font-semibold text-gray-800 mb-3">About this class</h2>
+                        <p class="text-gray-600 leading-relaxed" id="classDescription">Loading description...</p>
+                    </div>
+
+                    <div class="border-t border-gray-200 pt-4 mt-4">
+                        <div class="flex flex-wrap gap-4">
+                            <div class="bg-gray-100 px-4 py-2 rounded-lg">
+                                <span class="text-sm text-gray-600">Category:</span>
+                                <span class="font-medium text-gray-800 ml-2" id="classCategory">Loading...</span>
+                            </div>
+                            <div class="bg-gray-100 px-4 py-2 rounded-lg">
+                                <span class="text-sm text-gray-600">Students enrolled:</span>
+                                <span class="font-medium text-gray-800 ml-2" id="studentCount">0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Comments/Reviews Section (Optional) -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4">Discussion</h2>
+                    <p class="text-gray-500 text-center py-8">Comments feature coming soon!</p>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div class="lg:col-span-1">
+                <!-- Enrollment Card -->
+                <div class="bg-white rounded-lg shadow-md p-6 mb-6 sticky top-24">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Enrollment</h3>
+                    
+                    <div id="enrollmentStatus" class="mb-4">
+                        <!-- Enrollment status will be shown here -->
+                    </div>
+
+                    <button id="enrollBtn" onclick="enrollInClass()" 
+                            class="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition font-medium hidden">
+                        Enroll Now
+                    </button>
+
+                    <div id="liveClassInfo" class="mt-4 p-4 bg-red-50 rounded-lg hidden">
+                        <h4 class="font-semibold text-red-800 mb-2">Live Class Schedule</h4>
+                        <p class="text-sm text-red-700" id="liveSchedule">Loading...</p>
+                    </div>
+
+                    <div class="mt-6 pt-4 border-t border-gray-200">
+                        <h4 class="font-semibold text-gray-800 mb-3">Share this class</h4>
+                        <div class="flex space-x-3">
+                            <a href="#" onclick="shareOnFacebook()" class="bg-blue-600 text-white p-3 rounded-full hover:bg-blue-700 transition">
+                                <i class="fab fa-facebook-f"></i>
+                            </a>
+                            <a href="#" onclick="shareOnTwitter()" class="bg-blue-400 text-white p-3 rounded-full hover:bg-blue-500 transition">
+                                <i class="fab fa-twitter"></i>
+                            </a>
+                            <a href="#" onclick="shareOnLinkedIn()" class="bg-blue-700 text-white p-3 rounded-full hover:bg-blue-800 transition">
+                                <i class="fab fa-linkedin-in"></i>
+                            </a>
+                            <a href="#" onclick="copyClassLink()" class="bg-gray-600 text-white p-3 rounded-full hover:bg-gray-700 transition">
+                                <i class="fas fa-link"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Instructor Info -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">About the Instructor</h3>
+                    <div class="flex items-center mb-4">
+                        <div class="w-16 h-16 bg-gray-300 rounded-full flex items-center justify-center text-2xl font-bold text-gray-600">
+                            <span id="instructorInitial">JD</span>
+                        </div>
+                        <div class="ml-4">
+                            <h4 class="font-semibold text-gray-800" id="instructorName">Loading...</h4>
+                            <p class="text-sm text-gray-600">Expert Instructor</p>
+                        </div>
+                    </div>
+                    <p class="text-gray-600 text-sm">
+                        Experienced professional with years of industry expertise. Dedicated to helping students succeed.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/api.js"></script>
+    <script src="/js/auth.js"></script>
+    <script>
+        // Check authentication
+        const user = checkAuth();
+        if (!user) window.location.href = '/login.html';
+
+        // Get class ID from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const classId = urlParams.get('id');
+
+        if (!classId) {
+            window.location.href = '/classes.html';
+        }
+
+        let currentClass = null;
+        let isEnrolled = false;
+
+        // Load class details
+        document.addEventListener('DOMContentLoaded', async () => {
+            showLoading();
+            try {
+                currentClass = await classesAPI.getOne(classId);
+                displayClassDetails(currentClass);
+                
+                // Check if user is enrolled
+                const myClasses = await classesAPI.getMyClasses();
+                isEnrolled = myClasses.some(c => c._id === classId);
+                updateEnrollmentStatus();
+            } catch (error) {
+                console.error('Failed to load class:', error);
+                showToast('Failed to load class details', 'error');
+                setTimeout(() => {
+                    window.location.href = '/classes.html';
+                }, 2000);
+            } finally {
+                hideLoading();
+            }
+        });
+
+        function displayClassDetails(cls) {
+            document.getElementById('classTitle').textContent = cls.title;
+            document.getElementById('classInstructor').textContent = cls.instructor;
+            document.getElementById('classDuration').textContent = cls.duration;
+            document.getElementById('classViews').textContent = cls.views;
+            document.getElementById('classDescription').textContent = cls.description;
+            document.getElementById('classCategory').textContent = cls.category;
+            document.getElementById('studentCount').textContent = cls.enrolledStudents?.length || 0;
+            document.getElementById('instructorName').textContent = cls.instructor;
+            document.getElementById('instructorInitial').textContent = cls.instructor.split(' ').map(n => n[0]).join('').toUpperCase();
+
+            // Set class type badge
+            const typeBadge = document.getElementById('classTypeBadge');
+            if (cls.type === 'live') {
+                typeBadge.textContent = 'LIVE';
+                typeBadge.className = 'px-3 py-1 text-sm font-semibold rounded-full bg-red-100 text-red-800';
+                typeBadge.classList.remove('hidden');
+                
+                // Show live schedule
+                if (cls.schedule) {
+                    document.getElementById('liveClassInfo').classList.remove('hidden');
+                    document.getElementById('liveSchedule').textContent = new Date(cls.schedule).toLocaleString();
+                }
+            } else {
+                typeBadge.classList.add('hidden');
+            }
+
+            // Extract YouTube video ID and embed
+            const videoId = extractYouTubeId(cls.videoUrl);
+            if (videoId) {
+                document.getElementById('videoContainer').innerHTML = `
+                    <iframe 
+                        src="https://www.youtube.com/embed/${videoId}" 
+                        frameborder="0" 
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                        allowfullscreen>
+                    </iframe>
+                `;
+            } else {
+                document.getElementById('videoContainer').innerHTML = `
+                    <div class="flex items-center justify-center h-full bg-gray-900">
+                        <p class="text-white">Video unavailable</p>
+                    </div>
+                `;
+            }
+        }
+
+        function extractYouTubeId(url) {
+            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+            const match = url?.match(regExp);
+            return (match && match[2].length === 11) ? match[2] : null;
+        }
+
+        function updateEnrollmentStatus() {
+            const enrollmentStatus = document.getElementById('enrollmentStatus');
+            const enrollBtn = document.getElementById('enrollBtn');
+            
+            if (isEnrolled) {
+                enrollmentStatus.innerHTML = `
+                    <div class="bg-green-100 text-green-800 p-3 rounded-lg text-center">
+                        <i class="fas fa-check-circle mr-2"></i>
+                        You are enrolled in this class
+                    </div>
+                `;
+                enrollBtn.classList.add('hidden');
+            } else {
+                enrollmentStatus.innerHTML = '';
+                enrollBtn.classList.remove('hidden');
+            }
+        }
+
+        async function enrollInClass() {
+            showLoading();
+            try {
+                await classesAPI.enroll(classId);
+                showToast('Successfully enrolled in class!', 'success');
+                isEnrolled = true;
+                updateEnrollmentStatus();
+                
+                // Refresh class data
+                currentClass = await classesAPI.getOne(classId);
+                document.getElementById('studentCount').textContent = currentClass.enrolledStudents?.length || 0;
+            } catch (error) {
+                showToast(error.message, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Share functions
+        function shareOnFacebook() {
+            const url = encodeURIComponent(window.location.href);
+            window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, '_blank');
+        }
+
+        function shareOnTwitter() {
+            const url = encodeURIComponent(window.location.href);
+            const text = encodeURIComponent(`Check out this class: ${currentClass?.title}`);
+            window.open(`https://twitter.com/intent/tweet?url=${url}&text=${text}`, '_blank');
+        }
+
+        function shareOnLinkedIn() {
+            const url = encodeURIComponent(window.location.href);
+            window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${url}`, '_blank');
+        }
+
+        function copyClassLink() {
+            navigator.clipboard.writeText(window.location.href);
+            showToast('Link copied to clipboard!', 'success');
+        }
+    </script>
+</body>
+</html>
