@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - LearnStream</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-white z-50 hidden flex items-center justify-center">
+        <div class="text-center">
+            <div class="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+            <p class="mt-4 text-gray-600">Loading...</p>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed top-4 right-4 z-50 hidden">
+        <div class="bg-white rounded-lg shadow-lg border-l-4 border-green-500 px-6 py-4 min-w-[300px]">
+            <div class="flex items-center">
+                <i id="toastIcon" class="fas fa-check-circle text-green-500 text-xl mr-3"></i>
+                <p id="toastMessage" class="text-gray-700 flex-1"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Navigation -->
+    <nav class="bg-gray-900 text-white sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <i class="fas fa-graduation-cap text-blue-400 text-2xl mr-2"></i>
+                    <span class="font-bold text-xl">LearnStream Admin</span>
+                </div>
+                <div class="hidden md:flex items-center space-x-8">
+                    <a href="/admin/dashboard.html" class="text-white bg-gray-800 px-3 py-2 rounded-md">Dashboard</a>
+                    <a href="/admin/classes.html" class="text-gray-300 hover:text-white px-3 py-2">Classes</a>
+                    <a href="/admin/users.html" class="text-gray-300 hover:text-white px-3 py-2">Users</a>
+                    <a href="/admin/analytics.html" class="text-gray-300 hover:text-white px-3 py-2">Analytics</a>
+                    <div class="relative group">
+                        <button class="flex items-center space-x-2 text-gray-300">
+                            <span>Admin</span>
+                            <i class="fas fa-chevron-down text-xs"></i>
+                        </button>
+                        <div class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 hidden group-hover:block">
+                            <a href="/profile.html" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">Profile</a>
+                            <a href="/" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">View Site</a>
+                            <button onclick="logout()" class="block w-full text-left px-4 py-2 text-red-600 hover:bg-gray-100">Logout</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Welcome Section -->
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-800">Admin Dashboard</h1>
+            <p class="text-gray-600 mt-1">Manage your platform, classes, and users</p>
+        </div>
+
+        <!-- Stats Overview -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8" id="statsOverview">
+            <!-- Stats will be loaded here -->
+        </div>
+
+        <!-- Recent Users and Popular Classes -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <!-- Recent Users -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-xl font-bold text-gray-800 mb-4">Recent Users</h2>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full">
+                        <thead>
+                            <tr class="border-b">
+                                <th class="text-left py-2">Name</th>
+                                <th class="text-left py-2">Email</th>
+                                <th class="text-left py-2">Joined</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recentUsersTable">
+                            <!-- Users will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Popular Classes -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-xl font-bold text-gray-800 mb-4">Popular Classes</h2>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full">
+                        <thead>
+                            <tr class="border-b">
+                                <th class="text-left py-2">Title</th>
+                                <th class="text-left py-2">Views</th>
+                                <th class="text-left py-2">Students</th>
+                            </tr>
+                        </thead>
+                        <tbody id="popularClassesTable">
+                            <!-- Classes will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">Quick Actions</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <button onclick="window.location.href='/admin/classes.html?action=create'" 
+                        class="bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition flex items-center justify-center">
+                    <i class="fas fa-plus-circle mr-2"></i>
+                    Add New Class
+                </button>
+                <button onclick="window.location.href='/admin/users.html'" 
+                        class="bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 transition flex items-center justify-center">
+                    <i class="fas fa-users mr-2"></i>
+                    Manage Users
+                </button>
+                <button onclick="window.location.href='/admin/analytics.html'" 
+                        class="bg-purple-600 text-white py-3 px-4 rounded-lg hover:bg-purple-700 transition flex items-center justify-center">
+                    <i class="fas fa-chart-bar mr-2"></i>
+                    View Analytics
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/api.js"></script>
+    <script src="/js/auth.js"></script>
+    <script>
+        // Check admin authentication
+        const admin = checkAdmin();
+        if (!admin) window.location.href = '/login.html';
+
+        // Load dashboard data
+        document.addEventListener('DOMContentLoaded', async () => {
+            showLoading();
+            try {
+                const data = await adminAPI.getDashboard();
+                displayStats(data.stats);
+                displayRecentUsers(data.recentUsers);
+                displayPopularClasses(data.popularClasses);
+            } catch (error) {
+                console.error('Failed to load admin dashboard:', error);
+                showToast('Failed to load dashboard data', 'error');
+            } finally {
+                hideLoading();
+            }
+        });
+
+        function displayStats(stats) {
+            const statsOverview = document.getElementById('statsOverview');
+            const statItems = [
+                { icon: 'fa-users', label: 'Total Users', value: stats.totalUsers, color: 'blue' },
+                { icon: 'fa-book', label: 'Total Classes', value: stats.totalClasses, color: 'green' },
+                { icon: 'fa-video', label: 'Live Classes', value: stats.liveClasses, color: 'purple' },
+                { icon: 'fa-eye', label: 'Total Views', value: stats.totalViews, color: 'orange' }
+            ];
+
+            statsOverview.innerHTML = statItems.map(stat => `
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-500 text-sm">${stat.label}</p>
+                            <p class="text-3xl font-bold text-gray-800 mt-1">${stat.value}</p>
+                        </div>
+                        <div class="bg-${stat.color}-100 p-3 rounded-full">
+                            <i class="fas ${stat.icon} text-${stat.color}-600 text-xl"></i>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function displayRecentUsers(users) {
+            const recentUsersTable = document.getElementById('recentUsersTable');
+            
+            if (!users || users.length === 0) {
+                recentUsersTable.innerHTML = '<tr><td colspan="3" class="text-center py-4 text-gray-500">No users found</td></tr>';
+                return;
+            }
+
+            recentUsersTable.innerHTML = users.map(user => `
+                <tr class="border-b hover:bg-gray-50">
+                    <td class="py-2">${user.name}</td>
+                    <td class="py-2">${user.email}</td>
+                    <td class="py-2">${new Date(user.createdAt).toLocaleDateString()}</td>
+                </tr>
+            `).join('');
+        }
+
+        function displayPopularClasses(classes) {
+            const popularClassesTable = document.getElementById('popularClassesTable');
+            
+            if (!classes || classes.length === 0) {
+                popularClassesTable.innerHTML = '<tr><td colspan="3" class="text-center py-4 text-gray-500">No classes found</td></tr>';
+                return;
+            }
+
+            popularClassesTable.innerHTML = classes.map(cls => `
+                <tr class="border-b hover:bg-gray-50">
+                    <td class="py-2">${cls.title}</td>
+                    <td class="py-2">${cls.views}</td>
+                    <td class="py-2">${cls.enrolledStudents?.length || 0}</td>
+                </tr>
+            `).join('');
+        }
+    </script>
+</body>
+</html>
